@@ -81,6 +81,7 @@ jobs:
         run: echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       - name: Deploy to staging
         run: |
+          docker rm -f staging-app 2>/dev/null || true
           docker run -d --name staging-app -p 8080:8080 ghcr.io/${{ env.REPO_LOWER }}:latest
           sleep 5
           curl --retry 5 --retry-delay 2 --fail http://localhost:8080/health || exit 1
@@ -114,10 +115,11 @@ jobs:
           VERSION=${{ github.event.inputs.version }}
           if [ -z "$VERSION" ]; then VERSION="latest"; fi
           IMAGE=ghcr.io/${{ env.REPO_LOWER }}:$VERSION
+          docker rm -f app-green 2>/dev/null || true
+          docker rm -f app-blue 2>/dev/null || true
           docker run -d --name app-green -p 8081:8080 $IMAGE
           sleep 5
           curl --retry 5 --retry-delay 2 --fail http://localhost:8081/health || exit 1
-          docker stop app-blue 2>/dev/null || true
           docker run -d --name app-blue -p 8080:8080 $IMAGE
           sleep 3
           curl --fail http://localhost:8080/health || exit 1
